@@ -1,0 +1,153 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Joey Andres</title>
+  <meta name="author" content="Joey Andres">
+
+  
+  
+
+  <link rel="alternate" href="/atom.xml" title="Joey Andres" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+  
+</head>
+
+<body>
+  <header id="header" class="inner"><nav>
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+      <li><a href="/about">About</a></li>
+    
+  </ul>
+</nav></header>
+  <div id="content" class="inner">
+  <article class="post">
+  
+    <div class="gallery">
+  <div class="photoset">
+    
+      <img src="">
+    
+  </div>
+  <div class="control">
+    <div class="prev"></div>
+    <div class="next"></div>
+  </div>
+</div>
+  
+  <header>
+    
+  
+    <h1 class="title"><a href="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/">Sparse Distributed Memory - Addressing the Up/Down Counter Overflow</a></h1>
+  
+
+    <time datetime="2016-12-10T09:32:36.298Z">
+  <span class="day">10</span><span class="month">Dec</span>
+</time>
+  </header>
+  <div class="entry-content">
+    
+      <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>Sparse Distributed Memory (SDM) is a fascinating way of managing exponential growth in memory. As opposed to the traditional random-access memory (RAM) where there is a one to one correspondence between an address and a <em>hard location, </em>SDM can map multiple address to a multiple of <em>hard location</em>. I won’t delve into why this is useful, I suggest reading Mr. Kanerva’s paper, <em>A Cerebellar-Model Associative Memory As A Generalized Random-Access Memory</em>, which I believe is available in IEEE. The purpose of this article is to discuss the shortcoming of writing data in SDM and an amendment from Reinforcement Learning community.</p>
+<h1 id="SDM-Write-Read-operations"><a href="#SDM-Write-Read-operations" class="headerlink" title="SDM Write/Read operations"></a>SDM Write/Read operations</h1><p>Before we delve on addressing the shortcoming, let us quickly review on how the SDM <em>write/read</em> operation works. The figure below is taken from Mr. Kanerva’s paper mentioned above. Again, this is just a quick summary of the <em>write/read</em> operations, thus if lost, consult the paper. </p>
+<p>In the paper, it describes the writing of <em>1011001010</em> and then <em>0101010110 </em>to the SDM. Prior to any operations in SDM, the<em> Up/Down Counters</em> or the data storage itself are all zeros. For the first insertion, <em>1011001010</em> activated 3 address register in which its Hamming Distance is less than or equal 3. This then updates each cell in activated/selected rows in <em>Up/Down Counters</em>. For instance, all columns aligned to the <em>1s</em> in <em>1011001010</em> are all incremented by one, and all columns aligned to <em>0s</em> are decremented.</p>
+<img src="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/image_0.png" alt="SDM Writing operation" title="SDM Writing operation">
+<p>Similar operations occurred for second insertion, <em>0101010110</em> but different rows due to different hamming distance less than or equal three are activated.</p>
+<p>Reading is by summing all the activated columns. For instance, reading the data addressed by <em>0101010110</em> is through summing all the activated columns, resulting in (<em>-3, -5, -3, 5, 5, 3, -3, 3, -3, 3). </em>The sum is finally converted to bits, assigning 0 if the sum of a column is negative, whilst 1 if otherwise. So in our case this is: <em>0001110101</em>.</p>
+<img src="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/image_1.png" alt="SDM Reading operation" title="SDM Reading operation">
+<h1 id="Problem-with-SDM-Writing"><a href="#Problem-with-SDM-Writing" class="headerlink" title="Problem with SDM Writing"></a>Problem with SDM Writing</h1><p>Now suppose each cell in <em>Up/Down Counter</em> is represented by a 64bit signed integer (to allow for negatives) in a 64bit machine, thus occupying exactly one memory cell. Then there is a scenario in which after 264. Although this may seem like a super worst-case, it’s an overflow we’d rather not have. I have been reading unmentioned implementation and one of it have a <em>try/catch</em> or an <em>if/else</em> guard, considering these write operations happens a lot, this is a significant overhead.</p>
+<h1 id="Solution-1-Geometric-Series"><a href="#Solution-1-Geometric-Series" class="headerlink" title="Solution 1: Geometric Series"></a>Solution 1: Geometric Series</h1><p>So our problem is integer overflow. How do we solve this? We want something that is something with a horizontal asymptote, something that slows growing as it approaches a value, all to avoid the overflow.</p>
+<p>Geometric series have the following form:</p>
+<img src="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/image_2.png" alt="Geometric series" title="Geometric series">
+<p>Where <em>a </em>is the initial value, I usually set this to 1 and <em>r </em>is the common ratio. As you can see above, the sum of geometric series is:</p>
+<img src="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/image_3.png" alt="Geometric series sum." title="Geometric series sum.">
+<p>If <em>r</em> is set to |r| &lt; 1, then the series converges or “hits” a horizontal asymptote. So how is this useful as a replacement for integers in <em>Up/Down Counters</em>?</p>
+<p>Imagine each cell in <em>Up/Down Counters</em> is a double (64bit floating point), <em>a=1, and |r| &lt; 1 </em>(again so we converge), how do we utilized Geometric Series’ converging nature? </p>
+<ul>
+<li><p>Let <strong>R</strong> be the current value of a cell.</p>
+</li>
+<li><p>Let <strong>R’ </strong>be the next value of the same cell.</p>
+</li>
+</ul>
+<p>So we acquired <strong>R</strong> in our nth update. Since it is a geometric series where <em>a=1, and |r| &lt; 1</em>. </p>
+<p>R = 1 + r + … + rn</p>
+<p>This is not very useful since it assumes we keep track of integer <em>n</em> which defeats the purpose. How can we make a recurrence relationship, that is, how do we get <strong>R’ </strong>from <strong>R</strong>? Continuing from formula above:</p>
+<p>R = 1 + r + … + rn</p>
+<p>R’ = 1 + r + … + rn + rn+1</p>
+<p>R’ = 1 + (r + … + rn) x r</p>
+<p><strong>R’ = 1 + R x r</strong></p>
+<p>To generalize <em>a=1</em>,</p>
+<p><strong>R’ = a + R x r</strong></p>
+<p>That’s it. That is how we increment our cell in <em>Up/Down Counter.</em> Are we done? How do we decrement?</p>
+<h1 id="Solution-2-From-Reinforcement-Learning"><a href="#Solution-2-From-Reinforcement-Learning" class="headerlink" title="Solution 2: From Reinforcement Learning"></a>Solution 2: From Reinforcement Learning</h1><p>To solve the decrement problem above, we’ll introduce an equation from Reinforcement Learning, specifically, <a href="https://en.wikipedia.org/wiki/State-Action-Reward-State-Action" target="_blank" rel="external">SARSA</a>.</p>
+<img src="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/image_4.png" alt="SARSA Update Equation" title="SARSA Update Equation">
+<p>To quickly summarize (you can skip if you want) SARSA, (st, at) is the state-action pair. Q(st, at) is what we are trying to update base on the current observed reward of the next state Q(st+1, at+1). Step-size α controls how fast Q(st, at) learns or converge while 𝛄 dictates how influential future states are. Basically, by shifting rt+1 + 𝛄Q(st+1, at+1) to something greater than Q(st, at), Q(st, at) will be incremented and vice-versa. There lies the idea behind our final solution. If you decompose the equation above, you’ll also unravel a geometric series.</p>
+<p>If you don’t care about the SARSA equation above, it’s fine. Basically it allows us to increment/decrement. To make build our final solution, simply replace Q(st, at) as <strong>R</strong>, or the floating point we are trying to update in our <em>Up/Down counter </em>cell.</p>
+<p><strong>R &lt;- R + r[1 - R], </strong> <em>for increment</em></p>
+<p><strong>R &lt;- R + r[-1 - R], </strong> <em>for decrement</em></p>
+<p>Done! All I can say is shift your common-ratio/step-size to a really small value so you won’t converge quickly. Maybe change <strong>1</strong> to something bigger for the same reason. Other than that, NO MORE OVERFLOW!</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>Truth be told that the update formula from Reinforcement Learning is not unique. It is everywhere in machine learning literature such as <em>Perceptron Learning Rule</em> and the ever more popular <em>Linear Regression.</em> I just really love Reinforcement Learning that’s why I want to nudge it in.</p>
+
+    
+    
+    <footer class="meta">
+      
+      
+      
+    </footer>
+    
+  </div>
+  
+</article>
+
+
+<nav id="pagenavi">
+  
+  
+  <div class="clearfix"></div>
+</nav></div>
+  <footer id="footer" class="inner"><div class="social alignright">
+  
+  
+  
+  
+    <a class="github" href="https://github.com/JoeyAndres" title="GitHub">GitHub</a>
+  
+  <a class="rss" href="/atom.xml" title="RSS">RSS</a>
+</div>
+<p>
+  
+  &copy; 2016 Joey Andres
+  
+</p>
+<div class="clearfix"></div></footer>
+  <script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+
+<div id="phasebeam">
+  <canvas></canvas>
+  <canvas></canvas>
+  <canvas></canvas>
+</div>
+<script src="/js/phasebeam.js"></script>
+</body>
+</html>
