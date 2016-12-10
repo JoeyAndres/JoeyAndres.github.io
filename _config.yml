@@ -69,4 +69,4 @@ theme: phase
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://github.com/JoeyAndres/blog.git
+  repo: https://github.com/JoeyAndres/JoeyAndres.github.io.git
