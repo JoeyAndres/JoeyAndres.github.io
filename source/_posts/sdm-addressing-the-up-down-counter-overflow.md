@@ -1,5 +1,6 @@
 ---
 title: Sparse Distributed Memory - Addressing the Up/Down Counter Overflow
+tags: ai, sdm, sparse-distributed-memory
 ---
 # Introduction
 
