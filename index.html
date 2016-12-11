@@ -46,6 +46,76 @@
   <header>
     
   
+    <h1 class="title"><a href="/2016/12/11/sdm-and-database-part-1-planning/">SDM And Database - Part 1 - Planning</a></h1>
+  
+
+    <time datetime="2016-12-11T14:16:33.000Z">
+  <span class="day">11</span><span class="month">Dec</span>
+</time>
+  </header>
+  <div class="entry-content">
+    
+      <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><p>With my <a href="https://github.com/JoeyAndres/sdm" target="_blank" rel="external">Sparse Distributed Memory (SDM)</a> basic implementation finally done, in which the <em>[Up/Down Counters won’t overflo</em>w](<a href="https://joeyandres.github.io/2016/12/10/sdm-addressing-the-up-down-counter-overflow/" target="_blank" rel="external">https://joeyandres.github.io/2016/12/10/sdm-addressing-the-up-down-counter-overflow/</a>), I’m ready to embark something bigger. At the moment, my implementation stores everything in random-access-memory (RAM), which is very limiting. I have utilize SDM with my <a href="https://github.com/JoeyAndres/rl" target="_blank" rel="external">reinforcement learning (rl)</a>, solving entailments in a set of 11,000 metrics, which occupies all my 16gb of ram. This is not ideal since, even with SDM, there are many collisions, granted they are better than random hashing collision provided by <em>Tile Coding.</em> Also, I can only do machine learning on a smaller and sparse set of data, due to the space. To amend all of this, it is clear what the next step is. Utilize database systems.</p>
+<h1 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h1><p>Since all the “bottleneck” stems from the space requirements of the <em>Up/Down Counters</em>, it makes sense to somehow store all that stuff in database. For a quick review of what <em>Up/Down Counters </em>look like, see the figure below.</p>
+<img src="/2016/12/11/sdm-and-database-part-1-planning/image_0.png" alt="SDM Structure Image" title="SDM Structure Image">
+<p>What I want is to store each row in database.</p>
+<img src="/2016/12/11/sdm-and-database-part-1-planning/image_1.png" alt="Saving row to database" title="Saving row to database">
+<p>Considering that <em>Up/Down</em> <em>Counters</em> row represents a feature vector which is probably not that big, this might be sufficient. Problem occurs if the feature vector is actually huge, then we probably need a smarter way of segmenting each row into cells.</p>
+<img src="/2016/12/11/sdm-and-database-part-1-planning/image_2.png" alt="Saving chunks to database" title="Saving chunks to database">
+<p>Now we are more robust, allowing us to store bigger data. One thing to note is that storing each row will be faster, due to less “context-switching” when switching to another db entry. Cell solution can do the same by setting the <em>column width</em> to something equal to the size of data. Our final schema is represented by the image below.</p>
+<img src="/2016/12/11/sdm-and-database-part-1-planning/image_3.png" alt="Schema" title="Schema">
+<ul>
+<li><p>Each <em>UpDownCounter</em> instance have a db entry.</p>
+<ul>
+<li>Contains the size of each row, <em>DataSize</em>.</li>
+</ul>
+</li>
+<li><p>Each <em>UpDownCounter</em> instance have many associated <em>Cell</em>.</p>
+<ul>
+<li><p>Contains the <em>ChunkSize</em> of the cell. Although can be saved in <em>UpDownCounter</em>, imagine, having some cell bigger than the other. This should allow for that possibility, although I don’t intend to use it (I don’t mind the redundancy that much).</p>
+</li>
+<li><p>And the data itself, <em>BinData.</em></p>
+</li>
+<li><p>The <em>row, col</em> stores where this cell is located.</p>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="Choosing-A-Database"><a href="#Choosing-A-Database" class="headerlink" title="Choosing A Database"></a>Choosing A Database</h1><p>Since I don’t intend to uphold the CAP theorem, that is, the possibility of SDM incrementing the same counter at the same time should be possible, and I want horizontal scalability, I must choose one of the NoSQL database. I’ve looked at MongoDB and it’s <em>C++ </em>client (Note, my SDM implementation is in C++) and have found it difficult to build and install. I’ve also looked at Cassandra and it seems like a better fit for my problem. It was easy, way faster, and way scalable.</p>
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>That’s it! We are done. See you in part 2 when I have a basic working implementation of this.</p>
+
+    
+    
+    <footer class="meta">
+      
+      
+  <div class="tags">
+<a href="/tags/sdm-database/">sdm, database</a></div>
+
+      
+    </footer>
+    
+  </div>
+  
+</article>
+
+  <article class="post">
+  
+    <div class="gallery">
+  <div class="photoset">
+    
+      <img src="">
+    
+  </div>
+  <div class="control">
+    <div class="prev"></div>
+    <div class="next"></div>
+  </div>
+</div>
+  
+  <header>
+    
+  
     <h1 class="title"><a href="/2016/12/10/sdm-addressing-the-up-down-counter-overflow/">Sparse Distributed Memory - Addressing the Up/Down Counter Overflow</a></h1>
   
 
