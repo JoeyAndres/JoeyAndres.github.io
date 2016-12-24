@@ -1,6 +1,10 @@
 ---
 title: Sparse Distributed Memory - Addressing the Up/Down Counter Overflow
-tags: ai, sdm, sparse-distributed-memory
+date: 2016-12-10 14:16:33
+tags:
+  - ai
+  - sdm
+  - sparse distributed memory
 ---
 # Introduction
 

@@ -1,7 +1,9 @@
 ---
 title: SDM And Database - Part 1 - Planning
 date: 2016-12-11 14:16:33
-tags: sdm, database
+tags:
+  - sdm
+  - database
 ---
 # Introduction
 
