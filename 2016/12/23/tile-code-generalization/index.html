@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Tile Code - Generalization | Joey Andres</title>
+  <meta name="author" content="Joey Andres">
+
+  
+  <meta name="description" content="Introduction
+Coarse Coding, such as Tile Coding, is a nice way of storing a model of the environment linear in nature or have an ordinal characteristi">
+  
+  
+
+  <link rel="alternate" href="/atom.xml" title="Joey Andres" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+  <!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+  
+</head>
+
+<body>
+  <header id="header" class="inner"><nav>
+  <ul>
+    
+      <li><a href="/">Home</a></li>
+    
+      <li><a href="/archives">Archives</a></li>
+    
+      <li><a href="/about">About</a></li>
+    
+  </ul>
+</nav></header>
+  <div id="content" class="inner"><article class="post">
+  
+    <div class="gallery">
+  <div class="photoset">
+    
+      <img src="">
+    
+  </div>
+  <div class="control">
+    <div class="prev"></div>
+    <div class="next"></div>
+  </div>
+</div>
+  
+  <header>
+    
+  
+    <h1 class="title">Tile Code - Generalization</h1>
+  
+
+    <time datetime="2016-12-24T01:40:24.000Z">
+  <span class="day">23</span><span class="month">Dec</span>
+</time>
+  </header>
+  <div class="entry-content">
+    
+      <h1 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h1><img src="/2016/12/23/tile-code-generalization/image_0.png" alt="Course Coding Types" title="Course Coding Types">
+<p>Coarse Coding, such as Tile Coding, is a nice way of storing a model of the environment linear in nature or have an ordinal characteristics (for instance, alphabets are ordinal since it can be ordered: A &lt; B &lt; C, …). The image above illustrates how Coarse Coding may be utilized. <em>a) Narrow Generalization</em> is for problem space where precision over backup speed (samples have to be taken for neighbour values to propagate). <em>b) Broad Generalization</em> is for problem space where generalization can be taken advantage of, making value propagation from neighbours faster.</p>
+<p>Problem often occur if our Course Coding model is too fine we want to “Broaden” our model. Before we begin, I’ll discuss a real world problem I encountered recently.</p>
+<p>In one of a project with a client, we are given thousands of metrics and ask to solve the following problem:</p>
+<p><em>Given a pattern in a metric, what patterns in other metric entails it. For instance, given a pattern in metric M1 what pattern in other metrics are a culprit or causes it.</em></p>
+<p>In our project, one of the pattern of interest is a rising <em>web response time </em>metric, and we are asked what entails/causes it? With a little <a href="https://en.wikipedia.org/wiki/Feature_engineering" target="_blank" rel="external">feature engineering</a>, we are able to linearize metrics. By running this through a program that utilizes my <a href="https://github.com/JoeyAndres/rl" target="_blank" rel="external">rl library</a>, <em>db server response time</em> was found as one of the culprit. These patterns are given below.</p>
+<img src="/2016/12/23/tile-code-generalization/image_1.png" alt="Web Response Time vs DB Response Time" title="Web Response Time vs DB Response Time">
+<p>What the program did is basically create a model of the system so that if the <em>db server response time </em>pattern do occur again, we know that it will entail rising response time. An problem arises, it is obvious that <em>db response time</em> don’t have to follow the exact pattern above to entail <em>web response time </em>to rise. That is <em>db response time</em> just have to be elevated around 40-50ms response time for a problem to occur. That is why we want to generalize our model stored in Coarse Coding (specifically Tile Coding).</p>
+<h1 id="Solution-Tile-Coding"><a href="#Solution-Tile-Coding" class="headerlink" title="Solution (Tile Coding)"></a>Solution (Tile Coding)</h1><p>Although this solution is only for Tile Coding, general idea applies to other types of Coarse Coding. So in our metric above, we want to generalize it to:</p>
+<img src="/2016/12/23/tile-code-generalization/image_2.png" alt="Web Response Time vs DB Response Time (Broad)" title="Web Response Time vs DB Response Time (Broad)">
+<p>Note on how the bumps are “smoothed out”. This should now give us a better model for this problem. So <em>how do we generalize Tile Codes?</em></p>
+<p>To begin, let us first review a simplified version of Tile Code where it stores a 2D state-action space (1D state and 1D action). Suppose it is stored in the following tile (we will ignore multiple tiling to simplify this further):</p>
+<img src="/2016/12/23/tile-code-generalization/image_3.gif" alt="Grid" title="Grid">
+<p>Suppose actions are represented by the x axis while the states are represented by the y axis. Generalizing would mean storing the values stored in this grid to the following “Broader Grid”:</p>
+<img src="/2016/12/23/tile-code-generalization/image_4.png" alt="Broad Grid" title="Broad Grid">
+<p>Each square in <em>Broad Course Code</em> covers many vertex in the original Course Code. The idea then is each vertex in <em>Broad Coarse Code</em> have a value is the weighted average of all the covered vertex in the original Course Code. This is better illustrated visually here:</p>
+<img src="/2016/12/23/tile-code-generalization/image_5.png" alt="Overlay Narrow/Original and Broad Grid" title="Overlay Narrow/Original and Broad Grid">
+<ul>
+<li><p>Let green grid represent the original Tile Code grid.</p>
+</li>
+<li><p>Let the red grid represent our wanted Broad Tile Code grid.</p>
+</li>
+<li><p>Blue dot be one of the vertex (storage of state-action value) in our new Broad Tile Code grid.</p>
+</li>
+</ul>
+<p>So for the value in the vertex represented by the blue dot, it will be the weighted average of all the green vertex that is under the 4 red squares it sits on. (If vertex is at the side, then the vertex will be sitting on two squares whilst if it is in corner then it will be sitting on just one square). The weights would be the cartesian distance between a green vertex and the blue vertex. The weighted average can easily be done by the following formula:</p>
+<img src="/2016/12/23/tile-code-generalization/image_6.png" alt="Weighted Average Formula" title="Weighted Average Formula">
+<h1 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h1><p>Here we assume that the Tile Coding did not do any hashing. This is an equivalent of using the <em>TileCodeCorrect </em>class in my <a href="https://github.com/JoeyAndres/rl" target="_blank" rel="external">rl library</a>. Utilizing something with hashing shouldn’t be that big of a deal since the same representation of grids above still holds except that vertex are in “superposition”, in which a vertex is utilized by more than one state-action pair. More sophisticated methods are also needed for “non conventional tiles”:</p>
+<img src="/2016/12/23/tile-code-generalization/image_7.png" alt="Types of Tiling" title="Types of Tiling">
+<p>This method is really helpful in many situations in which discarding precision for myopic view of things is more useful.</p>
+
+    
+    
+    <footer class="meta">
+      
+      
+  <div class="tags">
+<a href="/tags/reinforcement-learning/">reinforcement learning</a><a href="/tags/richard-sutton/">richard sutton</a><a href="/tags/coarse-coding/">coarse coding</a><a href="/tags/coarse-code/">coarse code</a><a href="/tags/tile-coding/">tile coding</a><a href="/tags/tile-code/">tile code</a><a href="/tags/generalization/">generalization</a></div>
+
+      
+    </footer>
+    
+  </div>
+  
+</article></div>
+  <footer id="footer" class="inner"><div class="social alignright">
+  
+  
+  
+  
+    <a class="github" href="https://github.com/JoeyAndres" title="GitHub">GitHub</a>
+  
+  <a class="rss" href="/atom.xml" title="RSS">RSS</a>
+</div>
+<p>
+  
+  &copy; 2016 Joey Andres
+  
+</p>
+<div class="clearfix"></div></footer>
+  <script src="/js/jquery.imagesloaded.min.js"></script>
+<script src="/js/gallery.js"></script>
+
+
+
+
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.css" media="screen" type="text/css">
+<script src="/fancybox/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+  $('.fancybox').fancybox();
+})(jQuery);
+</script>
+
+
+<div id="phasebeam">
+  <canvas></canvas>
+  <canvas></canvas>
+  <canvas></canvas>
+</div>
+<script src="/js/phasebeam.js"></script>
+</body>
+</html>
